@@ -45,6 +45,12 @@ pub struct AdcBuffer {
     buffer: [u8; BUFFER_SIZE],
 }
 
+impl AsMut<[u8]> for AdcBuffer {
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.buffer
+    }
+}
+
 impl Default for AdcBuffer {
     fn default() -> Self {
         AdcBuffer {
@@ -67,11 +73,11 @@ impl<CB: FnMut(usize, usize)> Consumer<CB> for AdcEventConsumer {
 }
 
 impl<'a> Adc<'a> {
-    pub fn init_buffer(&self, buffer: &'a mut AdcBuffer) -> TockResult<SharedMemory> {
+    pub fn init_buffer(&self, buffer: &'a mut AdcBuffer) -> TockResult<SharedMemory<'a>> {
         syscalls::allow(DRIVER_NUMBER, allow_nr::BUFFER, &mut buffer.buffer).map_err(Into::into)
     }
 
-    pub fn init_alt_buffer(&self, alt_buffer: &'a mut AdcBuffer) -> TockResult<SharedMemory> {
+    pub fn init_alt_buffer(&self, alt_buffer: &'a mut AdcBuffer) -> TockResult<SharedMemory<'a>> {
         syscalls::allow(DRIVER_NUMBER, allow_nr::BUFFER_ALT, &mut alt_buffer.buffer)
             .map_err(Into::into)
     }

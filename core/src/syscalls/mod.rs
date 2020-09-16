@@ -116,22 +116,17 @@ pub fn allow(
     driver_number: usize,
     allow_number: usize,
     buffer_to_share: &mut [u8],
-) -> Result<SharedMemory, AllowError> {
-    let len = buffer_to_share.len();
+) -> Result<SharedMemory<'_>, AllowError> {
+    let len = buffer_to_share.as_mut().len();
+    let shared_memory = SharedMemory::new(driver_number, allow_number, buffer_to_share);
     let return_code = unsafe {
-        raw::allow(
-            driver_number,
-            allow_number,
-            buffer_to_share.as_mut_ptr(),
-            len,
-        )
+        shared_memory.operate_on_mut(|buffer| {
+            raw::allow(driver_number, allow_number, buffer.as_mut_ptr(), len)
+        })
     };
+
     if return_code == 0 {
-        Ok(SharedMemory::new(
-            driver_number,
-            allow_number,
-            buffer_to_share,
-        ))
+        Ok(shared_memory)
     } else {
         Err(AllowError {
             driver_number,

@@ -58,8 +58,32 @@ impl Default for HmacKeyBuffer {
     }
 }
 
+impl AsRef<[u8]> for HmacKeyBuffer {
+    fn as_ref(&self) -> &[u8] {
+        &self.buffer
+    }
+}
+
+impl AsMut<[u8]> for HmacKeyBuffer {
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.buffer
+    }
+}
+
 pub struct HmacDataBuffer {
     pub buffer: [u8; DATA_BUFFER_SIZE],
+}
+
+impl AsRef<[u8]> for HmacDataBuffer {
+    fn as_ref(&self) -> &[u8] {
+        &self.buffer
+    }
+}
+
+impl AsMut<[u8]> for HmacDataBuffer {
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.buffer
+    }
 }
 
 impl Default for HmacDataBuffer {
@@ -72,6 +96,18 @@ impl Default for HmacDataBuffer {
 
 pub struct HmacDestBuffer {
     buffer: [u8; DEST_BUFFER_SIZE],
+}
+
+impl AsRef<[u8]> for HmacDestBuffer {
+    fn as_ref(&self) -> &[u8] {
+        &self.buffer
+    }
+}
+
+impl AsMut<[u8]> for HmacDestBuffer {
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.buffer
+    }
 }
 
 impl Default for HmacDestBuffer {
@@ -87,15 +123,15 @@ pub struct HmacDriver<'a> {
 }
 
 impl<'a> HmacDriver<'a> {
-    pub fn init_key_buffer(&self, buffer: &'a mut HmacKeyBuffer) -> TockResult<SharedMemory> {
+    pub fn init_key_buffer(&self, buffer: &'a mut HmacKeyBuffer) -> TockResult<SharedMemory<'a>> {
         syscalls::allow(DRIVER_NUMBER, allow_nr::KEY, &mut buffer.buffer).map_err(Into::into)
     }
 
-    pub fn init_data_buffer(&self, buffer: &'a mut HmacDataBuffer) -> TockResult<SharedMemory> {
+    pub fn init_data_buffer(&self, buffer: &'a mut HmacDataBuffer) -> TockResult<SharedMemory<'a>> {
         syscalls::allow(DRIVER_NUMBER, allow_nr::DATA, &mut buffer.buffer).map_err(Into::into)
     }
 
-    pub fn init_dest_buffer(&self, buffer: &'a mut HmacDestBuffer) -> TockResult<SharedMemory> {
+    pub fn init_dest_buffer(&self, buffer: &'a mut HmacDestBuffer) -> TockResult<SharedMemory<'a>> {
         syscalls::allow(DRIVER_NUMBER, allow_nr::DEST, &mut buffer.buffer).map_err(Into::into)
     }
 

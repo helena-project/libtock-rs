@@ -53,20 +53,28 @@ impl BleAdvertisingDriverFactory {
 #[non_exhaustive]
 pub struct BleAdvertisingDriver;
 
-impl BleAdvertisingDriver {
-    pub fn create_advertising_buffer() -> [u8; BUFFER_SIZE_ADVERTISE] {
-        [0; BUFFER_SIZE_ADVERTISE]
+pub struct BleAdvertisingBuffer([u8; BUFFER_SIZE_ADVERTISE]);
+
+impl AsMut<[u8]> for BleAdvertisingBuffer {
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
     }
-    pub fn initialize<'a>(
+}
+
+impl BleAdvertisingDriver {
+    pub fn create_advertising_buffer() -> BleAdvertisingBuffer {
+        BleAdvertisingBuffer([0; BUFFER_SIZE_ADVERTISE])
+    }
+    pub fn initialize<'a, 'b>(
         &'a mut self,
         interval: usize,
         service_payload: &BlePayload,
-        advertising_buffer: &'a mut [u8; BUFFER_SIZE_ADVERTISE],
-    ) -> TockResult<SharedMemory<'a>> {
+        advertising_buffer: &'b mut BleAdvertisingBuffer,
+    ) -> TockResult<SharedMemory<'b>> {
         let mut shared_memory = syscalls::allow(
             DRIVER_NUMBER,
             allow_nr::ALLOW_ADVERTISMENT_BUFFER,
-            advertising_buffer,
+            &mut advertising_buffer.0,
         )?;
         shared_memory.write_bytes(service_payload);
         Self::start_advertising(gap_flags::BLE_DISCOVERABLE, interval)?;
@@ -89,9 +97,16 @@ struct BleCallback<'a> {
     shared_buffer: SharedMemory<'a>,
 }
 
-pub(crate) type ScanBuffer = [u8; BUFFER_SIZE_SCAN];
+#[derive(Clone, Copy)]
+pub struct ScanBuffer([u8; BUFFER_SIZE_SCAN]);
 
-const EMPTY_SCAN_BUFFER: ScanBuffer = [0; BUFFER_SIZE_SCAN];
+impl AsRef<[u8]> for ScanBuffer {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+const EMPTY_SCAN_BUFFER: ScanBuffer = ScanBuffer([0; BUFFER_SIZE_SCAN]);
 
 #[non_exhaustive]
 pub struct BleScanningDriverFactory;
@@ -130,13 +145,19 @@ pub struct BleScanningDriver {
     read_value: Cell<Option<ScanBuffer>>,
 }
 
+impl AsMut<[u8]> for ScanBuffer {
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
+}
+
 impl BleScanningDriver {
     /// Prepare Ble Scanning Driver to share memory with the ble capsule
     pub fn share_memory(&mut self) -> TockResult<BleScanningDriverShared> {
-        let shared_buffer: SharedMemory = syscalls::allow(
+        let shared_buffer = syscalls::allow(
             DRIVER_NUMBER,
             allow_nr::ALLOW_SCAN_BUFFER,
-            &mut self.shared_buffer,
+            &mut self.shared_buffer.0,
         )
         .map_err(Into::<TockError>::into)?;
         Ok(BleScanningDriverShared {
@@ -195,7 +216,7 @@ impl<'a> Consumer<Self> for BleCallback<'a> {
     fn consume(callback: &mut Self, _: usize, _: usize, _: usize) {
         let mut temporary_buffer: ScanBuffer = EMPTY_SCAN_BUFFER;
 
-        callback.shared_buffer.read_bytes(&mut temporary_buffer[..]);
+        callback.shared_buffer.read_bytes(temporary_buffer.as_mut());
         callback.read_value.set(Some(temporary_buffer));
     }
 }
